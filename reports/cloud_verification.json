@@ -1,0 +1,26 @@
+{
+  "health": {
+    "status": 200,
+    "model_loaded": true
+  },
+  "unauthenticated_api_status": 401,
+  "login_success": true,
+  "session_cookie_secure": true,
+  "security_headers": {
+    "Strict-Transport-Security": "max-age=31536000",
+    "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Cache-Control": "no-store"
+  },
+  "live_inference": {
+    "status": 200,
+    "duration_seconds": 0.963,
+    "detected_beats": 37,
+    "classified_beats": 35,
+    "heart_rate_bpm": 74.0
+  },
+  "csrf_block_status": 403,
+  "invalid_upload_status": 422,
+  "invalid_upload_has_no_fake_results": true
+}

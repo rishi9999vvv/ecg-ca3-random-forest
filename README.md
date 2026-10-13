@@ -2,6 +2,8 @@
 
 CA3 mini-project · ICC02 · Group 39
 
+Live deployment: https://ecg-ca3-group39.onrender.com (project access password required).
+
 A Flask web application that classifies ECG beats using the original 200-tree Random Forest pipeline. The browser shows a filtered waveform, per-beat labels and vote probabilities, beat distribution, heart rate, and RR interval variability. JSON and CSV downloads and browser printing are available.
 
 ## Team
@@ -56,6 +58,8 @@ The free service may sleep when idle; wake it before the evaluation. No persiste
 ```powershell
 python -m unittest test_app -v
 ```
+
+Reproduce the annotation sanity check with `python evaluate_samples.py`. Cloud verification evidence is in `reports/cloud_verification.json`.
 
 All 7 tests passed locally on 13 October 2026. Tests cover actual saved-model inference, invalid inputs, upload size, CSRF, rate limits, login/logout, and security headers. Do not use recursive test discovery on preserved legacy source files in the working copy.
 
