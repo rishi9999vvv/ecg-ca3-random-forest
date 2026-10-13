@@ -214,9 +214,34 @@ def load_signal(upload, sampling_rate):
             except Exception as error:
                 raise ValueError('Could not read this WFDB .dat/.hea pair. Check that the files belong to the same record.') from error
         else:
-            if len(raw) % 2:
-                raise ValueError('A headerless .dat file must contain 16-bit samples. For a WFDB record, upload its matching .hea file too.')
-            values = np.frombuffer(raw, dtype='<i2').astype(float)
+            encoding = request.form.get('dat_encoding', 'wfdb212')
+            if encoding == 'wfdb212':
+                if len(raw) % 3:
+                    raise ValueError('MIT-BIH WFDB 212 data must contain complete 3-byte sample groups. Upload its matching .hea file or select raw 16-bit encoding.')
+                # Headerless MIT-BIH records conventionally contain two multiplexed
+                # channels. Ask WFDB to decode channel zero instead of treating
+                # interleaved channel samples as one faster signal.
+                try:
+                    import wfdb
+                    with tempfile.TemporaryDirectory(prefix='ecg-wfdb-') as temp_dir:
+                        base = Path(temp_dir) / 'ecg_record'
+                        base.with_suffix('.dat').write_bytes(raw)
+                        frames = len(raw) // 3
+                        base.with_suffix('.hea').write_text(
+                            f'ecg_record 2 {sampling_rate} {frames}\n'
+                            'ecg_record.dat 212 200/mV 12 0 0 0 0 ECG1\n'
+                            'ecg_record.dat 212 200/mV 12 0 0 0 0 ECG2\n',
+                            encoding='ascii')
+                        record = wfdb.rdrecord(str(base), channels=[0])
+                        values = np.asarray(record.p_signal[:, 0], dtype=float)
+                except Exception as error:
+                    raise ValueError('Could not decode this headerless MIT-BIH 212 recording. Upload its matching .hea file for exact signal details.') from error
+            elif encoding == 'int16':
+                if len(raw) % 2:
+                    raise ValueError('A raw signed 16-bit .dat file must contain an even number of bytes.')
+                values = np.frombuffer(raw, dtype='<i2').astype(float)
+            else:
+                raise ValueError('Select MIT-BIH WFDB 212 or raw signed 16-bit DAT encoding.')
     if extension in {'.csv', '.txt'}:
         if b'\x00' in raw:
             raise ValueError('The file is not a text signal.')
@@ -240,8 +265,10 @@ def load_signal(upload, sampling_rate):
             raise ValueError('File must contain numeric ECG amplitudes in its last column.') from error
     if not 100 <= sampling_rate <= 1000:
         raise ValueError('Sampling rate in the WFDB header must be between 100 and 1000 Hz.')
-    if values.ndim != 1 or len(values) < 3 * sampling_rate or len(values) > 120 * sampling_rate:
-        raise ValueError('Provide a signal lasting between 3 and 120 seconds at the selected sampling rate.')
+    max_duration = 1860 if extension == '.dat' else 120
+    if values.ndim != 1 or len(values) < 3 * sampling_rate or len(values) > max_duration * sampling_rate:
+        duration_hint = '3 seconds and 31 minutes' if extension == '.dat' else '3 and 120 seconds'
+        raise ValueError(f'Provide a signal lasting between {duration_hint} at the selected sampling rate.')
     if not np.isfinite(values).all() or np.std(values) < 1e-8:
         raise ValueError('Signal must vary and contain only finite numeric values.')
     return values, sampling_rate

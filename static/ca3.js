@@ -7,6 +7,7 @@ el('file').addEventListener('change', () => {
   const file=el('file').files[0], isDat=file?.name.toLowerCase().endsWith('.dat');
   el('filename').textContent=file?.name || 'CSV/TXT amplitudes, or a DAT signal with its optional WFDB header.';
   el('header-field').hidden=!isDat;
+  el('dat-encoding-field').hidden=!isDat;
   if(!isDat)el('header').value='';
 });
 el('upload-form').addEventListener('submit', async event => {
