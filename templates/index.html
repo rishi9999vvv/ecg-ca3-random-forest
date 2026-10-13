@@ -1,7 +1,444 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="csrf-token" content="{{ csrf_token() }}"><title>ECG Analyzer | Random Forest</title><link rel="stylesheet" href="{{ url_for('static', filename='ca3.css') }}"><script src="{{ url_for('static', filename='ca3.js', v='dat212') }}" defer></script></head><body>
-<header class="topbar"><a class="brand" href="/">♥ <span>ECG Analyzer</span></a><span class="tag">CA3 · ICC02 · Group 39</span>{% if protected %}<form action="/logout" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="quiet" type="submit">Sign out</button></form>{% endif %}</header>
-<main><div class="intro"><span class="eyebrow">RANDOM FOREST CLASSIFICATION</span><h1>A clearer view of every heartbeat.</h1><p>Upload an ECG recording to inspect its waveform, rhythm, and beat classifications.</p></div>
-<div class="workspace"><section class="card upload"><h2>Analyze an ECG</h2><p class="muted">CSV/TXT: 3–120 sec · DAT: up to 31 min · max 2 MB</p><form id="upload-form"><label class="dropzone" for="file"><span class="upload-icon">↑</span><strong>Choose an ECG recording</strong><span id="filename">CSV/TXT amplitudes or a DAT signal; WFDB header is optional.</span><input id="file" name="file" type="file" accept=".csv,.txt,.dat" required></label><label id="header-field" class="field" for="header" hidden>Matching WFDB header <span>(.hea, optional)</span><input id="header" name="header" type="file" accept=".hea"></label><label id="dat-encoding-field" class="field" for="dat-encoding" hidden>DAT encoding<select id="dat-encoding" name="dat_encoding"><option value="wfdb212">MIT-BIH WFDB 212 (default)</option><option value="int16">Raw signed 16-bit</option></select></label><label class="field" for="sampling-rate">Sampling rate <span>(Hz)</span><input id="sampling-rate" name="sampling_rate" type="number" min="100" max="1000" value="360" required></label><button id="analyze" class="primary" type="submit">Analyze recording →</button></form><a class="sample" href="/sample.csv">Download a real sample ECG ↗</a><p class="small muted">MIT-BIH .dat uses WFDB 212 with two interleaved channels. Add the matching .hea when available for the exact rate and signal calibration. For raw signed 16-bit data, choose that encoding and enter its sampling rate.</p><div id="status" role="status" aria-live="polite">Ready for a recording.</div></section>
-<section class="card overview"><div class="card-heading"><h2>Recording overview</h2><span id="recording-tag" class="pill">Awaiting upload</span></div><div class="metrics"><div><span>Heart rate</span><strong id="heart-rate">—</strong><small>bpm</small></div><div><span>Detected beats</span><strong id="detected">—</strong><small>R peaks</small></div><div><span>Classified beats</span><strong id="classified">—</strong><small>complete windows</small></div><div><span>Duration</span><strong id="duration">—</strong><small>seconds</small></div></div><div class="wave-heading"><h3>Filtered ECG waveform</h3><span>Amplitude · mV when supplied in mV</span></div><div class="chart-wrap"><canvas id="waveform" aria-label="Filtered ECG waveform with classified heartbeat markers" role="img"></canvas><p id="chart-empty">Your waveform will appear here.</p></div><label class="field range-field" for="wave-start">View 10-second window <input type="range" id="wave-start" min="0" max="0" value="0" step="1" disabled><span id="window-label">0–10 seconds</span></label></section></div>
-<section id="results" hidden><div class="result-grid"><section class="card"><h2>Beat distribution</h2><p class="muted">Predictions from 200 decision trees</p><div id="distribution"></div></section><section class="card"><h2>RR interval variability</h2><p class="muted">Based on all detected beats</p><dl class="rr"><div><dt>SDNN</dt><dd id="sdnn">—</dd></div><div><dt>RMSSD</dt><dd id="rmssd">—</dd></div><div><dt>pNN50</dt><dd id="pnn50">—</dd></div></dl><p class="small muted">These estimates include ectopic beats. They are not validated NN-only HRV measurements.</p></section></div><section class="card beats"><div class="card-heading"><div><h2>Beat classifications</h2><p class="muted">Forest vote probabilities are shown as confidence.</p></div><div class="exports"><button id="download-json" class="quiet">Download JSON</button><button id="download-csv" class="quiet">Download CSV</button><button id="print" class="quiet">Print report</button></div></div><div class="table-wrap"><table><thead><tr><th>Beat</th><th>Time (s)</th><th>Class</th><th>Confidence</th></tr></thead><tbody id="beat-table"></tbody></table></div></section></section>
-<section class="footnote"><strong>Educational prototype</strong><p>Uses the original Random Forest model and 37 ECG features. Classification accuracy on this deployed pipeline has not been established. Predictions are intended for the mini-project demonstration and are not validated for diagnosis.</p></section></main><footer>ICC02 Group 39 · ECG Mini-project · 2026</footer></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>ECG Analyzer Pro | Random Forest</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .pulse-dot {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .heartbeat {
+            animation: heartbeat 1.5s ease-in-out infinite;
+        }
+
+        @keyframes heartbeat {
+            0% { transform: scale(1); }
+            14% { transform: scale(1.3); }
+            28% { transform: scale(1); }
+            42% { transform: scale(1.3); }
+            70% { transform: scale(1); }
+        }
+
+        .slide-up {
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .stat-card {
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        footer {
+            text-align: center;
+            padding: 15px 0;
+            background-color: #fff;
+            border-top: 1px solid #e5e7eb;
+            font-size: 16px;
+            letter-spacing: 0.5px;
+        }
+
+        .file-drop-area {
+            transition: all 0.3s ease;
+        }
+
+        .file-drop-area.drag-over {
+            background-color: #fef3c7;
+            border-color: #f59e0b;
+        }
+
+        .loading-bar {
+            animation: loading 2s ease-in-out infinite;
+        }
+
+        @keyframes loading {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-red-500 p-2 rounded-lg">
+                        <i class="fas fa-heartbeat text-white text-xl heartbeat"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-gray-900">ECG Analyzer Pro</h1>
+                        <p class="text-xs text-gray-500">Advanced Arrhythmia Detection System</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-2 h-2 bg-green-500 rounded-full pulse-dot"></div>
+                        <span class="text-sm text-gray-600">System Active</span>
+                    </div>
+                    <a href="/learn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-medium">
+                        <i class="fas fa-book mr-2"></i>Learn ECG Basics
+                    </a>
+                    <a href="#model-overview" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-medium">
+                        <i class="fas fa-info-circle mr-2"></i>About Model
+                    </a>
+                    <span class="text-xs text-gray-500">ICC02 · Group 39</span>
+                    {% if protected %}<form action="/logout" method="post" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="text-sm text-gray-600 hover:text-gray-900">Sign out</button></form>{% endif %}
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Model Performance Metrics -->
+        <div id="model-overview" class="mb-8 slide-up">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Original Random Forest Model</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="stat-card bg-white rounded-xl p-4 border border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">RF trees</p>
+                            <p class="text-2xl font-bold text-gray-900" id="accuracy">200</p>
+                        </div>
+                        <div class="bg-green-100 p-3 rounded-lg">
+                            <i class="fas fa-bullseye text-green-600"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card bg-white rounded-xl p-4 border border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Features</p>
+                            <p class="text-2xl font-bold text-gray-900" id="precision">37</p>
+                        </div>
+                        <div class="bg-blue-100 p-3 rounded-lg">
+                            <i class="fas fa-crosshairs text-blue-600"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card bg-white rounded-xl p-4 border border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Beat classes</p>
+                            <p class="text-2xl font-bold text-gray-900" id="recall">5</p>
+                        </div>
+                        <div class="bg-purple-100 p-3 rounded-lg">
+                            <i class="fas fa-chart-line text-purple-600"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card bg-white rounded-xl p-4 border border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Analysis mode</p>
+                            <p class="text-2xl font-bold text-gray-900" id="f1score">Original model</p>
+                        </div>
+                        <div class="bg-amber-100 p-3 rounded-lg">
+                            <i class="fas fa-award text-amber-600"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-3">Uses the project’s saved Random Forest pipeline. Historical training scores are not presented as current deployment accuracy.</p>
+        </div>
+
+        <!-- Upload Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Panel - Upload -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-xl border border-gray-200 p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Upload ECG Signal</h2>
+
+                    <div id="dropZone" class="file-drop-area border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-indigo-500 transition cursor-pointer">
+                        <i class="fas fa-file-medical text-4xl text-gray-400 mb-4"></i>
+                        <p class="text-sm font-medium text-gray-700 mb-1">Drop your ECG file here</p>
+                        <p class="text-xs text-gray-500 mb-4">or click to browse</p>
+                        <input type="file" id="fileInput" name="file" accept=".dat,.csv,.txt" class="hidden">
+                        <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-medium">
+                            Select File
+                        </button>
+                    </div>
+                    <label id="headerField" for="headerInput" class="hidden block mt-4 text-sm font-medium text-gray-700">Matching WFDB header (.hea, optional)
+                        <input type="file" id="headerInput" name="header" accept=".hea" class="block w-full mt-2 text-sm text-gray-600">
+                    </label>
+                    <label id="encodingField" for="datEncoding" class="hidden block mt-4 text-sm font-medium text-gray-700">DAT encoding
+                        <select id="datEncoding" name="dat_encoding" class="block w-full mt-2 rounded-lg border border-gray-300 px-3 py-2">
+                            <option value="wfdb212">MIT-BIH WFDB 212 (default)</option>
+                            <option value="int16">Raw signed 16-bit</option>
+                        </select>
+                    </label>
+                    <label class="block mt-4 text-sm font-medium text-gray-700" for="samplingRate">Sampling rate (Hz)
+                        <input type="number" id="samplingRate" name="sampling_rate" min="100" max="1000" value="360" class="block w-full mt-2 rounded-lg border border-gray-300 px-3 py-2">
+                    </label>
+                    <p class="text-xs text-gray-500 mt-3">CSV/TXT: 3–120 seconds. MIT-BIH DAT: up to 31 minutes and 2 MB. Add its matching .hea file when available.</p>
+                    <div id="uploadStatus" class="mt-3 text-sm text-gray-600" role="status" aria-live="polite">Choose a recording to begin.</div>
+
+                    <div id="fileInfo" class="hidden mt-4 p-4 bg-gray-50 rounded-lg">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-file-alt text-indigo-600"></i>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900" id="fileName"></p>
+                                    <p class="text-xs text-gray-500" id="fileSize"></p>
+                                </div>
+                            </div>
+                            <button id="removeFile" class="text-red-500 hover:text-red-700">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button id="analyzeBtn" class="w-full mt-6 bg-red-500 text-white py-3 rounded-lg hover:bg-red-600 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fas fa-microscope mr-2"></i>Analyze ECG
+                    </button>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="bg-white rounded-xl border border-gray-200 p-6 mt-6">
+                    <h3 class="text-sm font-semibold text-gray-900 mb-4">Detection Capabilities</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600">Normal beats</span>
+                            <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">N</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600">PVC</span>
+                            <span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">V</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600">SVE</span>
+                            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">S</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600">Fusion Beats</span>
+                            <span class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">F</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600">Unclassifiable</span>
+                            <span class="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">Q</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-6 mt-6">
+                    <h3 class="text-sm font-semibold text-gray-900 mb-3">Cloud and security</h3>
+                    <p class="text-sm text-gray-600">Hosted on Render with HTTPS, protected sessions, request verification, upload limits, and in-memory signal processing.</p>
+                </div>
+            </div>
+
+            <!-- Right Panel - Results -->
+            <div class="lg:col-span-2">
+                <!-- Loading State -->
+                <div id="loadingState" class="hidden">
+                    <div class="bg-white rounded-xl border border-gray-200 p-12">
+                        <div class="text-center">
+                            <div class="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
+                                <i class="fas fa-heart text-red-500 text-2xl heartbeat"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">Analyzing ECG Signal</h3>
+                            <p class="text-sm text-gray-500 mb-6">Processing signal and detecting arrhythmias...</p>
+                            <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                <div class="loading-bar bg-red-500 h-2 rounded-full"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Container -->
+                <div id="resultsContainer" class="hidden space-y-6">
+                    <!-- View Toggle Button -->
+                    <div class="flex justify-end mb-4">
+                        <button id="viewToggle" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-medium">
+                            <i class="fas fa-user-md mr-2"></i>Switch to Clinician View
+                        </button>
+                    </div>
+
+                    <!-- Critical Findings Card -->
+                    <div id="criticalFindingsCard" class="bg-white rounded-xl border-2 border-red-200 p-6 hidden">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                                <i class="fas fa-wave-square text-red-500 mr-2"></i>
+                                Model-predicted ectopic classes
+                            </h3>
+                        </div>
+                        <div id="criticalFindingsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <!-- Critical findings will be inserted here -->
+                        </div>
+                    </div>
+
+                    <!-- AI Clinical Assistant Card -->
+                    <div id="aiAssistantCard" class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-indigo-200 p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                                <i class="fas fa-graduation-cap text-indigo-600 mr-2"></i>
+                                Educational interpretation
+                            </h3>
+
+                        </div>
+                        <div id="aiInsightContent" class="text-gray-700">
+                            <p class="text-sm text-gray-600">The displayed beat labels and rhythm summaries come from the saved Random Forest pipeline. This educational prototype is not validated for diagnosis.</p>
+                        </div>
+                    </div>
+
+                    <!-- Summary Card -->
+                    <div class="bg-white rounded-xl border border-gray-200 p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-900">Analysis Summary</h3>
+                            <span id="signalQuality" class="text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded-full">Awaiting analysis</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                <p class="text-2xl font-bold text-gray-900" id="totalBeats">0</p>
+                                <p class="text-xs text-gray-500">Total Beats</p>
+                            </div>
+                            <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                <p class="text-2xl font-bold text-gray-900" id="heartRate">0</p>
+                                <p class="text-xs text-gray-500">Avg BPM</p>
+                            </div>
+                            <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                <p class="text-2xl font-bold text-red-600" id="abnormalBeats">0</p>
+                                <p class="text-xs text-gray-500">Abnormal</p>
+                            </div>
+                            <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                <p class="text-2xl font-bold text-green-600" id="normalPercent">0%</p>
+                                <p class="text-xs text-gray-500">Normal</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ECG Visualization -->
+                    <div class="bg-white rounded-xl border border-gray-200 p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-900">ECG Signal with Beat Annotations</h3>
+                            <div class="text-xs text-gray-500">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                Annotated ECG signal with beat type labels (N, V, S, F, Q)
+                            </div>
+                        </div>
+
+                        <!-- Plotly Interactive ECG Plot -->
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-700 mb-2">Interactive ECG Plot (Plotly)</h4>
+                            <div id="ecgPlot" style="height: 500px;"></div>
+                        </div>
+
+                    </div>
+
+                    <!-- Arrhythmia Distribution -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-white rounded-xl border border-gray-200 p-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Beat Classification</h3>
+                            <div id="pieChart" style="height: 300px;"></div>
+                        </div>
+
+                        <div class="bg-white rounded-xl border border-gray-200 p-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">HRV Metrics</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span class="text-sm text-gray-600">SDNN</span>
+                                        <span class="text-sm font-medium" id="sdnn">0 ms</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2">
+                                        <div id="sdnnBar" class="bg-blue-500 h-2 rounded-full" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span class="text-sm text-gray-600">RMSSD</span>
+                                        <span class="text-sm font-medium" id="rmssd">0 ms</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2">
+                                        <div id="rmssdBar" class="bg-green-500 h-2 rounded-full" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span class="text-sm text-gray-600">pNN50</span>
+                                        <span class="text-sm font-medium" id="pnn50">0%</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2">
+                                        <div id="pnn50Bar" class="bg-purple-500 h-2 rounded-full" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Clinical Findings -->
+                    <div class="bg-white rounded-xl border border-gray-200 p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Clinical Findings</h3>
+                        <div id="clinicalFindings" class="space-y-3">
+                            <!-- Findings will be inserted here -->
+                        </div>
+                    </div>
+
+                    <div id="beatDetails" class="hidden bg-white rounded-xl border border-gray-200 p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Random Forest beat classifications</h3>
+                        <div class="overflow-x-auto max-h-96"><table class="min-w-full text-sm text-left"><thead class="sticky top-0 bg-gray-50"><tr><th class="p-3">Beat</th><th class="p-3">Time (s)</th><th class="p-3">Class</th><th class="p-3">Vote probability</th></tr></thead><tbody id="beatDetailsBody"></tbody></table></div>
+                    </div>
+
+                    <!-- Export Options -->
+                    <div class="flex justify-end space-x-3">
+                        <button id="exportJSON" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition text-sm font-medium">
+                            <i class="fas fa-download mr-2"></i>Export JSON
+                        </button>
+                        <button id="exportPDF" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-medium">
+                            <i class="fas fa-file-pdf mr-2"></i>Export Report
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div id="emptyState" class="bg-white rounded-xl border border-gray-200 p-12">
+                    <div class="text-center">
+                        <div class="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                            <i class="fas fa-wave-square text-gray-400 text-2xl"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">No ECG Signal Loaded</h3>
+                        <p class="text-sm text-gray-500">Upload an ECG file to begin analysis</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='original_dashboard.js', v='ca3-cloud-3') }}" defer></script>
+    <!-- File upload behavior is implemented in the same-origin script above. -->
+    <footer>
+ICC02 Group 39 · CA3 ECG Mini-project · Hosted on Render
+  </footer>
+</body>
+</html>

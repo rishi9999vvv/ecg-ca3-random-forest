@@ -100,7 +100,14 @@ def security_headers(response):
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['Referrer-Policy'] = 'no-referrer'
     response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
-    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    # Preserve the original dashboard's Tailwind, Plotly, and icon/font assets.
+    # All application behavior remains in same-origin scripts and POSTs remain CSRF-checked.
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; script-src 'self' https://cdn.tailwindcss.com https://cdn.plot.ly 'unsafe-eval'; "
+        "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
+        "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com; "
+        "img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    )
     response.headers['Cache-Control'] = 'no-store' if request.endpoint != 'static' else 'public, max-age=3600'
     if PRODUCTION:
         response.headers['Strict-Transport-Security'] = 'max-age=31536000'
@@ -141,6 +148,11 @@ def logout():
 @app.get('/')
 def index():
     return render_template('index.html', protected=bool(PASSWORD_HASH))
+
+
+@app.get('/learn')
+def learn():
+    return render_template('learn.html', protected=bool(PASSWORD_HASH))
 
 
 @app.get('/health')
