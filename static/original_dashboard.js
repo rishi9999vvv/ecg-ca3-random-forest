@@ -173,6 +173,7 @@ function displayResults(result) {
   }
 
   const wave = result.waveform || {seconds: [], amplitude: [], beat_seconds: [], beat_amplitude: []};
+  const duration = result.duration_seconds;
   const traces = [{x: wave.seconds, y: wave.amplitude, type: 'scatter', mode: 'lines', name: 'ECG signal',
     line: {color: '#2563eb', width: 1.4}, hovertemplate: '%{x:.2f} s<br>%{y:.3f} mV<extra></extra>'}];
   for (const type of Object.keys(classLabels)) {
@@ -185,13 +186,30 @@ function displayResults(result) {
       hovertemplate: '%{text}<br>%{x:.2f} s<extra></extra>'});
   }
   Plotly.newPlot('ecgPlot', traces, {margin: {t: 16, r: 20, b: 48, l: 54},
-    xaxis: {title: 'Time (seconds)', gridcolor: '#e5e7eb'}, yaxis: {title: 'Amplitude (mV)', gridcolor: '#e5e7eb'},
+    xaxis: {title: 'Time (seconds)', gridcolor: '#e5e7eb', range: [0, Math.min(10, duration)]}, yaxis: {title: 'Amplitude (mV)', gridcolor: '#e5e7eb'},
     legend: {orientation: 'h', y: 1.13}, paper_bgcolor: '#fff', plot_bgcolor: '#fff'},
     {responsive: true, displaylogo: false, modeBarButtonsToRemove: ['lasso2d', 'select2d']});
+  const windowSlider = byId('viewWindow');
+  windowSlider.max = Math.max(0, Math.ceil(duration - 10));
+  windowSlider.value = 0;
+  windowSlider.disabled = false;
+  updateWindowLabel();
   const types = Object.keys(classLabels).filter(type => distribution[type] > 0);
   Plotly.newPlot('pieChart', [{values: types.map(type => distribution[type]), labels: types.map(type => `${type} · ${classLabels[type]}`),
     type: 'pie', marker: {colors: types.map(type => classColors[type])}, textinfo: 'label+value', hoverinfo: 'label+value+percent'}],
     {margin: {t: 8, r: 8, b: 8, l: 8}, showlegend: false}, {responsive: true, displaylogo: false});
+}
+
+byId('viewWindow').addEventListener('input', event => {
+  const start = Number(event.target.value);
+  const end = Math.min(start + 10, currentAnalysisData?.duration_seconds || 10);
+  Plotly.relayout('ecgPlot', {'xaxis.range': [start, end]});
+  updateWindowLabel();
+});
+function updateWindowLabel() {
+  const start = Number(byId('viewWindow').value);
+  const end = Math.min(start + 10, currentAnalysisData?.duration_seconds || 10);
+  byId('windowLabel').textContent = `${start}–${end} seconds`;
 }
 
 byId('viewToggle').addEventListener('click', () => {
@@ -202,6 +220,13 @@ byId('viewToggle').addEventListener('click', () => {
 byId('exportJSON').addEventListener('click', () => {
   if (!currentAnalysisData) return;
   download(JSON.stringify(currentAnalysisData, null, 2), 'application/json', 'ecg-analysis.json');
+});
+byId('exportCSV').addEventListener('click', () => {
+  if (!currentAnalysisData) return;
+  const csvCell = value => `"${String(value).replaceAll('"', '""')}"`;
+  const rows = [['beat', 'time_seconds', 'class', 'label', 'vote_probability'],
+    ...(currentAnalysisData.beats || []).map(beat => [beat.index, beat.time_seconds, beat.type, beat.label, beat.confidence])];
+  download(rows.map(row => row.map(csvCell).join(',')).join('\n'), 'text/csv;charset=utf-8', 'ecg-beat-classifications.csv');
 });
 byId('exportPDF').addEventListener('click', () => window.print());
 function download(content, type, filename) {

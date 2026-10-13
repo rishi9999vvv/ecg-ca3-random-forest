@@ -353,6 +353,11 @@
                             <h4 class="text-sm font-semibold text-gray-700 mb-2">Interactive ECG Plot (Plotly)</h4>
                             <div id="ecgPlot" style="height: 500px;"></div>
                         </div>
+                        <label class="mt-4 flex flex-wrap items-center gap-3 text-sm text-gray-600" for="viewWindow">
+                            View 10-second window
+                            <input type="range" id="viewWindow" min="0" max="0" value="0" step="1" disabled class="min-w-48 flex-1 accent-indigo-600">
+                            <span id="windowLabel">0–10 seconds</span>
+                        </label>
 
                     </div>
 
@@ -414,6 +419,9 @@
                     <div class="flex justify-end space-x-3">
                         <button id="exportJSON" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition text-sm font-medium">
                             <i class="fas fa-download mr-2"></i>Export JSON
+                        </button>
+                        <button id="exportCSV" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition text-sm font-medium">
+                            <i class="fas fa-file-csv mr-2"></i>Export CSV
                         </button>
                         <button id="exportPDF" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-medium">
                             <i class="fas fa-file-pdf mr-2"></i>Export Report
