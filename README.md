@@ -8,7 +8,13 @@ A Flask web application that classifies ECG beats using the original 200-tree Ra
 
 ## Team
 
-Siddarth Singh Kushwah, Rishi Dwivedi, Ronit Kamble, and Shubankar Bhan.
+Siddarth Singh Kushwah, Rishi Dwivedi, Ronit Kamble, and Shubhankar Bhan.
+
+## Continuity with the original ECG Analyzer
+
+The original Random Forest project files are included alongside the CA3 deployment: its backend modules are in `backend/`, its original stylesheet and JavaScript remain in `static/css/` and `static/js/`, and its learning page and dashboard template are `templates/learn.html` and `templates/original_dashboard.html`. `backend/original_app.py` and `config.py` preserve the original application and settings for reference. The cloud entry point is `app.py`; it reuses the original trained model and compatible signal-processing/feature logic while adding the CA3 login, upload validation, and deployment controls.
+
+The original dashboard is retained as source, but its JavaScript calls `/upload` and `/configure`, endpoints that its original Flask app did not define. The cloud dashboard uses the compatible analysis endpoint so failed uploads cannot be shown as simulated successful results.
 
 ## Run locally
 
