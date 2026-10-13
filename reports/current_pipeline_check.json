@@ -1,0 +1,154 @@
+{
+  "scope": "Classroom sanity check on three 30-second MIT-BIH excerpts; not a held-out benchmark. Training overlap is unknown.",
+  "records": [
+    {
+      "record": "100",
+      "duration_seconds": 30,
+      "detected_beats": 37,
+      "classified_beats": 35,
+      "matched_reference_beats": 35,
+      "correct_predictions": 34,
+      "sample_accuracy": 0.9714285714285714,
+      "heart_rate_bpm": 74.0,
+      "inference_seconds": 0.131,
+      "distribution": {
+        "N": 35,
+        "V": 0,
+        "S": 0,
+        "F": 0,
+        "Q": 0
+      }
+    },
+    {
+      "record": "119",
+      "duration_seconds": 30,
+      "detected_beats": 32,
+      "classified_beats": 30,
+      "matched_reference_beats": 30,
+      "correct_predictions": 23,
+      "sample_accuracy": 0.7666666666666667,
+      "heart_rate_bpm": 66.3,
+      "inference_seconds": 0.092,
+      "distribution": {
+        "N": 30,
+        "V": 0,
+        "S": 0,
+        "F": 0,
+        "Q": 0
+      }
+    },
+    {
+      "record": "200",
+      "duration_seconds": 30,
+      "detected_beats": 44,
+      "classified_beats": 42,
+      "matched_reference_beats": 42,
+      "correct_predictions": 22,
+      "sample_accuracy": 0.5238095238095238,
+      "heart_rate_bpm": 88.9,
+      "inference_seconds": 0.098,
+      "distribution": {
+        "N": 33,
+        "V": 2,
+        "S": 7,
+        "F": 0,
+        "Q": 0
+      }
+    }
+  ],
+  "label_order": [
+    "F",
+    "N",
+    "Q",
+    "S",
+    "V"
+  ],
+  "matching": "Greedy one-to-one nearest annotation match within 150 ms. First/last detected peaks and incomplete beat windows excluded. Includes detector errors; annotation label mapping is recorded in this script.",
+  "classification_report": {
+    "F": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "N": {
+      "precision": 0.7857142857142857,
+      "recall": 0.9166666666666666,
+      "f1-score": 0.8461538461538461,
+      "support": 84.0
+    },
+    "Q": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "S": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 1.0
+    },
+    "V": {
+      "precision": 1.0,
+      "recall": 0.09090909090909091,
+      "f1-score": 0.16666666666666669,
+      "support": 22.0
+    },
+    "micro avg": {
+      "precision": 0.7383177570093458,
+      "recall": 0.7383177570093458,
+      "f1-score": 0.7383177570093457,
+      "support": 107.0
+    },
+    "macro avg": {
+      "precision": 0.3571428571428571,
+      "recall": 0.2015151515151515,
+      "f1-score": 0.20256410256410257,
+      "support": 107.0
+    },
+    "weighted avg": {
+      "precision": 0.822429906542056,
+      "recall": 0.7383177570093458,
+      "f1-score": 0.698538221902708,
+      "support": 107.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      77,
+      0,
+      7,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      1,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      20,
+      0,
+      0,
+      2
+    ]
+  ]
+}

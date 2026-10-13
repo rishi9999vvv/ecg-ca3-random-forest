@@ -1,0 +1,329 @@
+{
+  "dataset": {
+    "n_records": 48,
+    "n_beats": 108370,
+    "records": [
+      {
+        "record_name": "100",
+        "n_beats": 2272
+      },
+      {
+        "record_name": "101",
+        "n_beats": 1866
+      },
+      {
+        "record_name": "102",
+        "n_beats": 2187
+      },
+      {
+        "record_name": "103",
+        "n_beats": 2080
+      },
+      {
+        "record_name": "104",
+        "n_beats": 2223
+      },
+      {
+        "record_name": "105",
+        "n_beats": 2590
+      },
+      {
+        "record_name": "106",
+        "n_beats": 1954
+      },
+      {
+        "record_name": "107",
+        "n_beats": 2120
+      },
+      {
+        "record_name": "108",
+        "n_beats": 1782
+      },
+      {
+        "record_name": "109",
+        "n_beats": 2523
+      },
+      {
+        "record_name": "111",
+        "n_beats": 2121
+      },
+      {
+        "record_name": "112",
+        "n_beats": 2538
+      },
+      {
+        "record_name": "113",
+        "n_beats": 1794
+      },
+      {
+        "record_name": "114",
+        "n_beats": 1839
+      },
+      {
+        "record_name": "115",
+        "n_beats": 1952
+      },
+      {
+        "record_name": "116",
+        "n_beats": 2391
+      },
+      {
+        "record_name": "117",
+        "n_beats": 1534
+      },
+      {
+        "record_name": "118",
+        "n_beats": 2277
+      },
+      {
+        "record_name": "119",
+        "n_beats": 1987
+      },
+      {
+        "record_name": "121",
+        "n_beats": 1861
+      },
+      {
+        "record_name": "122",
+        "n_beats": 2475
+      },
+      {
+        "record_name": "123",
+        "n_beats": 1514
+      },
+      {
+        "record_name": "124",
+        "n_beats": 1605
+      },
+      {
+        "record_name": "200",
+        "n_beats": 2599
+      },
+      {
+        "record_name": "201",
+        "n_beats": 1889
+      },
+      {
+        "record_name": "202",
+        "n_beats": 2113
+      },
+      {
+        "record_name": "203",
+        "n_beats": 2861
+      },
+      {
+        "record_name": "205",
+        "n_beats": 2645
+      },
+      {
+        "record_name": "207",
+        "n_beats": 2080
+      },
+      {
+        "record_name": "208",
+        "n_beats": 2562
+      },
+      {
+        "record_name": "209",
+        "n_beats": 3004
+      },
+      {
+        "record_name": "210",
+        "n_beats": 2567
+      },
+      {
+        "record_name": "212",
+        "n_beats": 2746
+      },
+      {
+        "record_name": "213",
+        "n_beats": 3232
+      },
+      {
+        "record_name": "214",
+        "n_beats": 2252
+      },
+      {
+        "record_name": "215",
+        "n_beats": 3359
+      },
+      {
+        "record_name": "217",
+        "n_beats": 2178
+      },
+      {
+        "record_name": "219",
+        "n_beats": 2150
+      },
+      {
+        "record_name": "220",
+        "n_beats": 2046
+      },
+      {
+        "record_name": "221",
+        "n_beats": 2191
+      },
+      {
+        "record_name": "222",
+        "n_beats": 2478
+      },
+      {
+        "record_name": "223",
+        "n_beats": 2569
+      },
+      {
+        "record_name": "228",
+        "n_beats": 1944
+      },
+      {
+        "record_name": "230",
+        "n_beats": 2256
+      },
+      {
+        "record_name": "231",
+        "n_beats": 1569
+      },
+      {
+        "record_name": "232",
+        "n_beats": 1782
+      },
+      {
+        "record_name": "233",
+        "n_beats": 3064
+      },
+      {
+        "record_name": "234",
+        "n_beats": 2749
+      }
+    ],
+    "class_distribution": {
+      "F": 784,
+      "N": 90271,
+      "Q": 8478,
+      "S": 2688,
+      "V": 6149
+    }
+  },
+  "accuracy": 0.9879579219341146,
+  "classification_report": {
+    "F": {
+      "precision": 0.8297872340425532,
+      "recall": 0.7452229299363057,
+      "f1-score": 0.7852348993288591,
+      "support": 157.0
+    },
+    "N": {
+      "precision": 0.9912971633158909,
+      "recall": 0.9968428049185776,
+      "f1-score": 0.9940622497169211,
+      "support": 18054.0
+    },
+    "Q": {
+      "precision": 0.9951661631419939,
+      "recall": 0.9711084905660378,
+      "f1-score": 0.9829901521933752,
+      "support": 1696.0
+    },
+    "S": {
+      "precision": 0.9479166666666666,
+      "recall": 0.8472998137802608,
+      "f1-score": 0.8947885939036381,
+      "support": 537.0
+    },
+    "V": {
+      "precision": 0.9629927594529365,
+      "recall": 0.973170731707317,
+      "f1-score": 0.9680549939344926,
+      "support": 1230.0
+    },
+    "accuracy": 0.9879579219341146,
+    "macro avg": {
+      "precision": 0.9454319973240082,
+      "recall": 0.9067289541816997,
+      "f1-score": 0.9250261778154572,
+      "support": 21674.0
+    },
+    "weighted avg": {
+      "precision": 0.9877489037125452,
+      "recall": 0.9879579219341146,
+      "f1-score": 0.9877476308558443,
+      "support": 21674.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      117,
+      31,
+      0,
+      1,
+      8
+    ],
+    [
+      21,
+      17997,
+      6,
+      20,
+      10
+    ],
+    [
+      0,
+      30,
+      1647,
+      1,
+      18
+    ],
+    [
+      0,
+      72,
+      0,
+      455,
+      10
+    ],
+    [
+      3,
+      25,
+      2,
+      3,
+      1197
+    ]
+  ],
+  "feature_names": [
+    "duration",
+    "max_amplitude",
+    "min_amplitude",
+    "amplitude_range",
+    "mean_amplitude",
+    "std_amplitude",
+    "skewness",
+    "kurtosis_val",
+    "rms_energy",
+    "total_energy",
+    "zero_crossing_rate",
+    "num_peaks",
+    "dominant_frequency",
+    "spectral_energy",
+    "low_freq_power",
+    "mid_freq_power",
+    "high_freq_power",
+    "spectral_centroid",
+    "spectral_entropy",
+    "r_peak_position",
+    "r_peak_amplitude",
+    "q_amplitude",
+    "q_position",
+    "s_amplitude",
+    "s_position",
+    "qrs_width",
+    "beat_area",
+    "max_slope",
+    "min_slope",
+    "rr_interval",
+    "prev_rr",
+    "next_rr",
+    "rr_ratio_prev",
+    "rr_ratio_next",
+    "heart_rate",
+    "rr_diff_prev",
+    "rr_diff_next"
+  ]
+}

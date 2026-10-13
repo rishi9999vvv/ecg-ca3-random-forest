@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+data/
+uploads/
+*.log
+# Preserved legacy files from the source project; not used by this CA3 build.
+backend/
+static/css/
+static/js/
+templates/learn.html
+reports/plots/
