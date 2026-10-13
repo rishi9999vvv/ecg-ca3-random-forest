@@ -3,7 +3,12 @@ const el = id => document.getElementById(id);
 const labels = {N:'Normal',V:'PVC',S:'SVE',F:'Fusion',Q:'Unclassifiable'};
 const colors = {N:'#087f80',V:'#cf5151',S:'#d49529',F:'#8966ae',Q:'#86969c'};
 let result = null;
-el('file').addEventListener('change', () => {el('filename').textContent = el('file').files[0]?.name || 'The last column should contain ECG amplitudes.';});
+el('file').addEventListener('change', () => {
+  const file=el('file').files[0], isDat=file?.name.toLowerCase().endsWith('.dat');
+  el('filename').textContent=file?.name || 'CSV/TXT amplitudes, or a DAT signal with its optional WFDB header.';
+  el('header-field').hidden=!isDat;
+  if(!isDat)el('header').value='';
+});
 el('upload-form').addEventListener('submit', async event => {
   event.preventDefault();const button = el('analyze');button.disabled = true;button.textContent = 'Analyzing recording…';
   el('status').className = '';el('status').textContent = 'Filtering signal and classifying heartbeat windows…';el('results').hidden = true;result = null;

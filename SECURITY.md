@@ -7,7 +7,7 @@
 | Secret management | Cloud environment variables; production fails without adequate secrets | Startup configuration check |
 | Session protection | Secure in production, HttpOnly, SameSite=Lax | Cookie readback and configuration tests |
 | CSRF | Random token in signed session, compared on every POST; rotated on login | Missing/stale token tests |
-| Upload controls | CSV/TXT allowlist, 2 MB request limit, numeric/finite/duration/rate validation | Invalid and oversized upload tests |
+| Upload controls | CSV/TXT/DAT allowlist, 2 MB request limit, matching WFDB header checks, numeric/finite/duration/rate validation | Invalid and oversized upload tests |
 | Privacy | Parse and process in RAM; never persist uploaded ECG files | Code review and API implementation |
 | Resource limits | One concurrent inference; 15 POSTs per minute per observed peer; 5 login attempts | Rate-limit test |
 | Browser isolation | Same-origin CSP, no external scripts, frame denial, MIME sniffing protection | Header tests |

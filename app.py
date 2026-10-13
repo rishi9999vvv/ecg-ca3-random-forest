@@ -5,6 +5,7 @@ import os
 import secrets
 import threading
 import time
+import tempfile
 from collections import Counter, OrderedDict, deque
 from datetime import timedelta
 from pathlib import Path
@@ -160,36 +161,90 @@ def sample():
 
 def load_signal(upload, sampling_rate):
     extension = Path(upload.filename or '').suffix.lower()
-    if extension not in {'.csv', '.txt'}:
-        raise ValueError('Upload a CSV or TXT ECG signal. Convert WFDB records to CSV first.')
+    if extension not in {'.csv', '.txt', '.dat'}:
+        raise ValueError('Upload a CSV, TXT, or DAT ECG signal.')
     if not 100 <= sampling_rate <= 1000:
         raise ValueError('Sampling rate must be between 100 and 1000 Hz.')
     raw = upload.read(2 * 1024 * 1024 + 1)
-    if not raw or len(raw) > 2 * 1024 * 1024 or b'\x00' in raw:
-        raise ValueError('The file is empty, too large, or is not a text signal.')
-    try:
-        text = raw.decode('utf-8-sig')
-        if extension == '.csv':
-            # Header is optional. The LAST column is the ECG amplitude.
-            first_line = text.splitlines()[0].split(',')
+    if not raw or len(raw) > 2 * 1024 * 1024:
+        raise ValueError('The file is empty or larger than 2 MB.')
+    if extension == '.dat':
+        header = request.files.get('header')
+        if header and header.filename:
+            if Path(header.filename).suffix.lower() != '.hea':
+                raise ValueError('The companion WFDB header must be a .hea file.')
+            header_raw = header.read(64 * 1024 + 1)
+            if not header_raw or len(header_raw) > 64 * 1024:
+                raise ValueError('The .hea header is empty or too large.')
             try:
-                [float(value) for value in first_line]
-                has_header = False
+                header_text = header_raw.decode('ascii')
+                lines = header_text.splitlines()
+                first = lines[0].split()
+                if len(first) < 3:
+                    raise ValueError('The .hea file is not a valid WFDB header.')
+                source_name = Path(first[0]).name
+                if Path(source_name).stem.casefold() != Path(upload.filename).stem.casefold():
+                    raise ValueError('Choose the matching .dat and .hea files from the same ECG record.')
+                first[0] = 'ecg_record'
+                lines[0] = ' '.join(first)
+                referenced_data = 0
+                for i in range(1, len(lines)):
+                    line = lines[i].strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    parts = line.split()
+                    if parts[0].lower().endswith(('.dat', '.mat')):
+                        if Path(parts[0]).name.casefold() != Path(upload.filename).name.casefold():
+                            raise ValueError('This WFDB header references other data files; upload a single-file record.')
+                        parts[0] = 'ecg_record.dat'
+                        lines[i] = ' '.join(parts)
+                        referenced_data += 1
+                if referenced_data == 0:
+                    raise ValueError('The .hea header does not reference the selected .dat file.')
+                import wfdb
+                with tempfile.TemporaryDirectory(prefix='ecg-wfdb-') as temp_dir:
+                    base = Path(temp_dir) / 'ecg_record'
+                    base.with_suffix('.dat').write_bytes(raw)
+                    base.with_suffix('.hea').write_text('\n'.join(lines) + '\n', encoding='ascii')
+                    record = wfdb.rdrecord(str(base), channels=[0])
+                    values = np.asarray(record.p_signal[:, 0], dtype=float)
+                    sampling_rate = int(record.fs)
             except ValueError:
-                has_header = True
-            frame = pd.read_csv(io.StringIO(text), header=0 if has_header else None)
-            values = pd.to_numeric(frame.iloc[:, -1], errors='raise').to_numpy(dtype=float)
+                raise
+            except Exception as error:
+                raise ValueError('Could not read this WFDB .dat/.hea pair. Check that the files belong to the same record.') from error
         else:
-            values = np.loadtxt(io.StringIO(text), ndmin=1)
-            if values.ndim == 2:
-                values = values[:, -1]
-    except (ValueError, UnicodeError, pd.errors.ParserError, IndexError) as error:
-        raise ValueError('File must contain numeric ECG amplitudes in its last column.') from error
+            if len(raw) % 2:
+                raise ValueError('A headerless .dat file must contain 16-bit samples. For a WFDB record, upload its matching .hea file too.')
+            values = np.frombuffer(raw, dtype='<i2').astype(float)
+    if extension in {'.csv', '.txt'}:
+        if b'\x00' in raw:
+            raise ValueError('The file is not a text signal.')
+        try:
+            text = raw.decode('utf-8-sig')
+            if extension == '.csv':
+                # Header is optional. The LAST column is the ECG amplitude.
+                first_line = text.splitlines()[0].split(',')
+                try:
+                    [float(value) for value in first_line]
+                    has_header = False
+                except ValueError:
+                    has_header = True
+                frame = pd.read_csv(io.StringIO(text), header=0 if has_header else None)
+                values = pd.to_numeric(frame.iloc[:, -1], errors='raise').to_numpy(dtype=float)
+            else:
+                values = np.loadtxt(io.StringIO(text), ndmin=1)
+                if values.ndim == 2:
+                    values = values[:, -1]
+        except (ValueError, UnicodeError, pd.errors.ParserError, IndexError) as error:
+            raise ValueError('File must contain numeric ECG amplitudes in its last column.') from error
+    if not 100 <= sampling_rate <= 1000:
+        raise ValueError('Sampling rate in the WFDB header must be between 100 and 1000 Hz.')
     if values.ndim != 1 or len(values) < 3 * sampling_rate or len(values) > 120 * sampling_rate:
         raise ValueError('Provide a signal lasting between 3 and 120 seconds at the selected sampling rate.')
     if not np.isfinite(values).all() or np.std(values) < 1e-8:
         raise ValueError('Signal must vary and contain only finite numeric values.')
-    return values
+    return values, sampling_rate
 
 
 def analyze_signal(values, fs):
@@ -259,7 +314,7 @@ def analyze():
             return jsonify(success=False, error='Choose an ECG file.'), 400
         try:
             fs = int(request.form.get('sampling_rate', '360'))
-            values = load_signal(upload, fs)
+            values, fs = load_signal(upload, fs)
             result = analyze_signal(values, fs)
         except ValueError as error:
             return jsonify(success=False, error=str(error)), 422

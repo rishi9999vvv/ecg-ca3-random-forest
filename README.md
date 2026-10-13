@@ -31,10 +31,11 @@ Open http://127.0.0.1:5001. Local development omits password protection unless A
 
 ## Input and real sample data
 
-- CSV with or without a header, or numeric TXT. The last column is the ECG amplitude.
-- Sampling frequency is entered explicitly, 100–1000 Hz; use 360 Hz for the included MIT-BIH samples.
+- CSV with or without a header, numeric TXT, and `.dat` files. The last column is the ECG amplitude for text files.
+- WFDB `.dat` records should be uploaded with the matching `.hea`; the sampling rate is read from that header. Headerless `.dat` files are treated as little-endian signed 16-bit samples and use the entered sampling rate.
+- Sampling frequency is 100–1000 Hz; use 360 Hz for the included MIT-BIH samples and raw files without headers.
 - 3–120 seconds, maximum 2 MB. Files with non-finite, non-numeric, or constant signals are rejected.
-- WFDB .dat/.hea files must be converted to CSV first. No file is saved by the analysis endpoint.
+- No uploaded file is saved by the analysis endpoint. WFDB pair parsing uses a temporary directory that is removed after each request.
 - `samples/` contains the first 30 seconds from MIT-BIH records 100, 119, and 200 and their reference annotation excerpts. Source: [PhysioNet MIT-BIH Arrhythmia Database v1.0.0](https://physionet.org/content/mitdb/1.0.0/). Recordings are provided for reproducible classroom demonstrations.
 
 ## Pipeline
