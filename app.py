@@ -345,8 +345,10 @@ def analyze_signal(values, fs):
 
 @app.post('/api/analyze')
 def analyze():
-    if not INFERENCE_SLOT.acquire(blocking=False):
-        return jsonify(success=False, error='The analyzer is busy. Please retry shortly.'), 503
+    if not INFERENCE_SLOT.acquire(timeout=45):
+        response = jsonify(success=False, error='The analyzer is still processing another recording. Please retry shortly.')
+        response.headers['Retry-After'] = '5'
+        return response, 503
     try:
         upload = request.files.get('file')
         if not upload or not upload.filename:
